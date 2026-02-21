@@ -1,0 +1,38 @@
+[project]
+name = "fastapi-correlation"
+version = "0.0.1"
+description = "Correlation ID middleware and structured logging for FastAPI — zero project-specific dependencies"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "Aleksandar Krsteski", email = "acikabubo@gmail.com" },
+]
+keywords = ["fastapi", "correlation-id", "middleware", "logging", "starlette", "tracing"]
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Framework :: FastAPI",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/acikabubo/fastapi-correlation"
+Repository = "https://github.com/acikabubo/fastapi-correlation"
+Issues = "https://github.com/acikabubo/fastapi-correlation/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fastapi_correlation"]
