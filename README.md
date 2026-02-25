@@ -1,22 +1,57 @@
 # fastapi-correlation
 
-> **Name reserved — active development coming soon.**
+> 📢 **Hobby Project Notice:** This is a research and learning project exploring FastAPI
+> middleware and structured logging best practices. Feel free to use it as a reference,
+> report issues, or suggest improvements! Contributions and feedback are always welcome.
 
-Correlation ID middleware and structured logging for FastAPI.
+Correlation ID middleware and structured logging for FastAPI — zero project-specific
+dependencies (only Starlette).
 
-## Planned Features
+## Features
 
-- `CorrelationMiddleware` — injects a unique `X-Correlation-ID` header per request (generates one if absent)
+- `CorrelationIDMiddleware` — injects a unique `X-Correlation-ID` header per request
+  (reads the incoming header if present, generates a UUID4 otherwise)
 - `get_correlation_id()` — context-var accessor usable anywhere in the request lifecycle
-- Structured logging integration — automatically attaches `correlation_id` to every log record
-- WebSocket support — propagates correlation ID through WebSocket connections
-- Zero project-specific dependencies (only Starlette/FastAPI)
+- `LoggingContextMiddleware` — injects `endpoint`, `method`, `status_code`, and `user_id`
+  into every log record for the duration of the request
+- `set_log_context` / `get_log_context` / `clear_log_context` — helpers for enriching
+  per-request structured log fields
+- `StructuredJSONFormatter` — RFC 3339 UTC JSON output ready for Loki / Grafana Alloy
+- `HumanReadableFormatter` — compact, coloured output for local development
 
-## Status
+## Installation
 
-This package is a name reservation. Implementation will follow.
+```bash
+pip install fastapi-correlation
+```
 
-Follow progress at: https://github.com/acikabubo/fastapi-correlation
+## Quick start
+
+```python
+from fastapi import FastAPI
+from fastapi_correlation import (
+    CorrelationIDMiddleware,
+    LoggingContextMiddleware,
+    StructuredJSONFormatter,
+    set_log_context,
+    get_correlation_id,
+)
+import logging, sys
+
+# Wire up structured JSON logging
+handler = logging.StreamHandler(sys.stdout)
+handler.setFormatter(StructuredJSONFormatter())
+logging.getLogger().addHandler(handler)
+
+app = FastAPI()
+app.add_middleware(LoggingContextMiddleware)
+app.add_middleware(CorrelationIDMiddleware)
+
+@app.get("/ping")
+async def ping():
+    set_log_context(custom_field="hello")
+    return {"correlation_id": get_correlation_id()}
+```
 
 ## License
 
