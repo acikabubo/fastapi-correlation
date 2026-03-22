@@ -21,7 +21,8 @@ class LoggingContextMiddleware(BaseHTTPMiddleware):  # type: ignore[misc]
     Sets ``endpoint`` and ``method`` before the request is processed, then
     adds ``user_id`` (from ``request.user.username`` if Starlette
     ``AuthenticationMiddleware`` is installed) and ``status_code`` after the
-    response is produced.  Clears the context once the response is sent.
+    response is produced. Clears the context in a ``finally`` block so it is
+    always released even if an exception occurs during dispatch.
 
     Example::
 
@@ -44,15 +45,16 @@ class LoggingContextMiddleware(BaseHTTPMiddleware):  # type: ignore[misc]
             method=request.method,
         )
 
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
 
-        # user is only available after AuthenticationMiddleware runs (inside call_next)
-        if "user" in request.scope:
-            user = request.user
-            if hasattr(user, "username") and user.username:
-                set_log_context(user_id=user.username)
+            # user is only available after AuthenticationMiddleware runs (inside call_next)
+            if "user" in request.scope:
+                user = request.user
+                if hasattr(user, "username") and user.username:
+                    set_log_context(user_id=user.username)
 
-        set_log_context(status_code=response.status_code)
-        clear_log_context()
-
-        return response
+            set_log_context(status_code=response.status_code)
+            return response
+        finally:
+            clear_log_context()
