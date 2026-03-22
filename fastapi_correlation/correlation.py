@@ -1,9 +1,14 @@
 """
 Correlation ID middleware for distributed tracing.
 
-Extracts or generates an 8-character correlation ID per request, stores it in
-a ContextVar so it's accessible anywhere in the call stack, and echoes it back
-in the response as X-Correlation-ID.
+Extracts or generates a correlation ID per request, stores it in a ContextVar
+so it's accessible anywhere in the call stack, and echoes it back in the
+response as X-Correlation-ID.
+
+Generated IDs are full UUID4 strings (36 chars). Incoming header values are
+sanitised — only alphanumeric characters, hyphens, and underscores are kept,
+capped at 36 chars — to prevent log injection while preserving interoperability
+with upstream services that send their own IDs.
 """
 
 import uuid
@@ -23,9 +28,11 @@ class CorrelationIDMiddleware(BaseHTTPMiddleware):  # type: ignore[misc]
     Middleware that attaches a correlation ID to every HTTP request.
 
     Behaviour:
-    - If the incoming request contains an ``X-Correlation-ID`` header its
-      value (truncated to 8 characters) is used as-is.
-    - Otherwise a new 8-character UUID fragment is generated.
+    - If the incoming request contains an ``X-Correlation-ID`` header, its
+      value is sanitised (alphanumeric, hyphens, underscores only; capped at
+      36 chars) and used as the correlation ID.
+    - If the header is absent or empty after sanitisation, a fresh UUID4 is
+      generated.
     - The ID is stored in :data:`correlation_id` ContextVar so it is
       accessible anywhere in the request lifecycle via
       :func:`get_correlation_id`.
@@ -49,7 +56,9 @@ class CorrelationIDMiddleware(BaseHTTPMiddleware):  # type: ignore[misc]
         Returns:
             Response with ``X-Correlation-ID`` header added.
         """
-        cid = request.headers.get("X-Correlation-ID", str(uuid.uuid4()))[:8]
+        incoming = request.headers.get("X-Correlation-ID", "").strip()
+        safe = "".join(c for c in incoming if c.isalnum() or c in "-_")[:36]
+        cid = safe if safe else str(uuid.uuid4())
 
         # Expose via request.state for other middleware
         request.state.request_id = cid
@@ -67,8 +76,8 @@ def get_correlation_id() -> str:
     Return the correlation ID for the current request.
 
     Returns:
-        8-character correlation ID string, or ``""`` if called outside a
-        request context.
+        Correlation ID string (full UUID4 or sanitised upstream value),
+        or ``""`` if called outside a request context.
 
     Example::
 
