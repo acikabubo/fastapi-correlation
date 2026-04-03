@@ -90,3 +90,33 @@ async def test_clears_context_after_request(app: FastAPI) -> None:
         await middleware.dispatch(request, call_next)
 
     mock_clear.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_clears_context_even_when_call_next_raises(app: FastAPI) -> None:
+    middleware = LoggingContextMiddleware(app)
+    request = make_request()
+    call_next = AsyncMock(side_effect=RuntimeError("handler crashed"))
+
+    with patch("fastapi_correlation.context_middleware.clear_log_context") as mock_clear:
+        with pytest.raises(RuntimeError):
+            await middleware.dispatch(request, call_next)
+
+    mock_clear.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_clears_context_even_when_post_response_logic_raises(app: FastAPI) -> None:
+    middleware = LoggingContextMiddleware(app)
+    request = make_request()
+    call_next = AsyncMock(return_value=Response(status_code=200))
+
+    with patch("fastapi_correlation.context_middleware.clear_log_context") as mock_clear:
+        with patch(
+            "fastapi_correlation.context_middleware.set_log_context",
+            side_effect=[None, RuntimeError("set failed")],
+        ):
+            with pytest.raises(RuntimeError):
+                await middleware.dispatch(request, call_next)
+
+    mock_clear.assert_called_once()
